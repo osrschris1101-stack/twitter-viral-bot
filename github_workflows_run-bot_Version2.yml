@@ -1,0 +1,57 @@
+name: Run Twitter Viral Bot
+
+on:
+  workflow_dispatch:      # 🖱️ Manuell starten möglich
+  schedule:
+    - cron: '0 6 * * *'   # ⏰ Täglich um 6 Uhr UTC automatisch
+    - cron: '0 12 * * *'  # Auch um 12 Uhr
+    - cron: '0 18 * * *'  # Und um 18 Uhr
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write  # Erlaubnis zum Committen
+
+    steps:
+      - name: 📥 Repository checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Python einrichten
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Dependencies installieren
+        run: |
+          python -m pip install --upgrade pip
+          pip install snscrape pandas requests
+
+      - name: 🤖 Bot ausführen
+        run: |
+          python bot.py
+        continue-on-error: true  # Auch bei Fehler weitermachen
+
+      - name: 💾 Ergebnisse committen
+        run: |
+          git config --global user.name "🤖 Twitter Bot"
+          git config --global user.email "bot@github.com"
+          
+          if [ -f viral_posts.json ]; then
+            git add viral_posts.json
+            git commit -m "🤖 Bot update: $(date +'%Y-%m-%d %H:%M:%S UTC')" || echo "No changes"
+            git push
+          else
+            echo "⚠️ viral_posts.json nicht gefunden"
+          fi
+
+      - name: ✅ Status anzeigen
+        run: |
+          echo "Bot-Lauf abgeschlossen"
+          if [ -f viral_posts.json ]; then
+            echo "Ergebnisse wurden gespeichert"
+            head -20 viral_posts.json
+          fi
